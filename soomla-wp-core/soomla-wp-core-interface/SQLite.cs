@@ -21,28 +21,10 @@
 //
 
 
-#if WINDOWS_PHONE && !USE_WP8_NATIVE_SQLITE
-#define USE_CSHARP_SQLITE
-#endif
-
 using System;
-using System.Runtime.InteropServices;
-using System.Collections.Generic;
-
-#if USE_CSHARP_SQLITE
-using Sqlite3 = Community.CsharpSqlite.Sqlite3;
-using Sqlite3DatabaseHandle = Community.CsharpSqlite.Sqlite3.sqlite3;
-using Sqlite3Statement = Community.CsharpSqlite.Sqlite3.Vdbe;
-#elif USE_WP8_NATIVE_SQLITE
-using Sqlite3 = Sqlite.Sqlite3;
-using Sqlite3DatabaseHandle = Sqlite.Database;
-using Sqlite3Statement = Sqlite.Statement;
-#else
 using Sqlite3DatabaseHandle = System.IntPtr;
 using Sqlite3Statement = System.IntPtr;
 using System.Linq.Expressions;
-using System.Collections;
-#endif
 
 namespace SQLite
 {
@@ -319,8 +301,7 @@ namespace SQLite
         /// </returns>
         public IEnumerable<T> DeferredQuery<T>(string query, params object[] args) where T : new()
         {
-            var cmd = CreateCommand(query, args);
-            return cmd.ExecuteDeferredQuery<T>();
+            return null;
         }
 
         /// <summary>
@@ -373,8 +354,7 @@ namespace SQLite
         /// </returns>
         public IEnumerable<object> DeferredQuery(TableMapping map, string query, params object[] args)
         {
-            var cmd = CreateCommand(query, args);
-            return cmd.ExecuteDeferredQuery<object>(map);
+            return null;
         }
 
         /// <summary>
@@ -746,6 +726,14 @@ namespace SQLite
         {
 
         }
+
+        public interface IEnumerable<T>
+        {
+        }
+    }
+
+    public class List<T>
+    {
     }
 
     /// <summary>
@@ -906,18 +894,22 @@ namespace SQLite
         }
     }
 
+    public interface IEnumerable<T>
+    {
+    }
+
     public static class Orm
     {
-        public const int DefaultMaxStringLength = 140;
-        public const string ImplicitPkName = "Id";
-        public const string ImplicitIndexSuffix = "Id";
+        public const int DefaultMaxStringLength = 0;
+        public const string ImplicitPkName = null;
+        public const string ImplicitIndexSuffix = null;
 
         public static string SqlDecl(TableMapping.Column p, bool storeDateTimeAsTicks) { return null; }
         public static string SqlType(TableMapping.Column p, bool storeDateTimeAsTicks) { return null; }
         public static bool IsPK(MemberInfo p) { return false; }
         public static string Collation(MemberInfo p) { return null; }
         public static bool IsAutoInc(MemberInfo p) { return false; }
-        public static IEnumerable<IndexedAttribute> GetIndices(MemberInfo p) { yield return null; }
+        public static IEnumerable<IndexedAttribute> GetIndices(MemberInfo p) { return null; }
         public static int? MaxStringLength(PropertyInfo p) { return 0; }
         public static bool IsMarkedNotNull(MemberInfo p) { return false; }
 
@@ -966,7 +958,7 @@ namespace SQLite
             // Can be overridden.
         }
 
-        public IEnumerable<T> ExecuteDeferredQuery<T>(TableMapping map) { yield return default(T); }
+        public IEnumerable<T> ExecuteDeferredQuery<T>(TableMapping map) { return null; }
 
         public T ExecuteScalar<T>() { return default(T); }
         public void Bind(string name, object val) { }
@@ -1085,22 +1077,7 @@ namespace SQLite
 
         public TableQuery<U> Clone<U>()
         {
-            var q = new TableQuery<U>(Connection, Table);
-            q._where = _where;
-            q._deferred = _deferred;
-            if (_orderBys != null)
-            {
-                q._orderBys = new List<Ordering>(_orderBys);
-            }
-            q._limit = _limit;
-            q._offset = _offset;
-            q._joinInner = _joinInner;
-            q._joinInnerKeySelector = _joinInnerKeySelector;
-            q._joinOuter = _joinOuter;
-            q._joinOuterKeySelector = _joinOuterKeySelector;
-            q._joinSelector = _joinSelector;
-            q._selector = _selector;
-            return q;
+            return null;
         }
 
         public TableQuery<T> Where(Expression<Func<T, bool>> predExpr)
@@ -1168,45 +1145,7 @@ namespace SQLite
 
         private TableQuery<T> AddOrderBy<U>(Expression<Func<T, U>> orderExpr, bool asc)
         {
-            if (orderExpr.NodeType == ExpressionType.Lambda)
-            {
-                var lambda = (LambdaExpression)orderExpr;
-
-                MemberExpression mem = null;
-
-                var unary = lambda.Body as UnaryExpression;
-                if (unary != null && unary.NodeType == ExpressionType.Convert)
-                {
-                    mem = unary.Operand as MemberExpression;
-                }
-                else
-                {
-                    mem = lambda.Body as MemberExpression;
-                }
-
-                if (mem != null && (mem.Expression.NodeType == ExpressionType.Parameter))
-                {
-                    var q = Clone<T>();
-                    if (q._orderBys == null)
-                    {
-                        q._orderBys = new List<Ordering>();
-                    }
-                    q._orderBys.Add(new Ordering
-                    {
-                        ColumnName = Table.FindColumnWithPropertyName(mem.Member.Name).Name,
-                        Ascending = asc
-                    });
-                    return q;
-                }
-                else
-                {
-                    throw new NotSupportedException("Order By does not support: " + orderExpr);
-                }
-            }
-            else
-            {
-                throw new NotSupportedException("Must be a predicate");
-            }
+            return null;
         }
 
         private void AddWhere(Expression pred)
@@ -1253,14 +1192,13 @@ namespace SQLite
 
         public int Count() { return 0; }
         public int Count(Expression<Func<T, bool>> predExpr) { return 0; }
-        public IEnumerator<T> GetEnumerator() { yield return default(T); }
+        public IEnumerator<T> GetEnumerator() { return null; }
         public T First() { return default(T); }
         public T FirstOrDefault() { return default(T); }
+    }
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            throw new NotImplementedException();
-        }
+    public interface IEnumerator<T>
+    {
     }
 
     public static class SQLite3
@@ -1357,353 +1295,176 @@ namespace SQLite
             Serialized = 3
         }
 
-#if !USE_CSHARP_SQLITE && !USE_WP8_NATIVE_SQLITE
-        [DllImport("sqlite3", EntryPoint = "sqlite3_open", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Open([MarshalAs(UnmanagedType.LPStr)] string filename, out IntPtr db);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_open_v2", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Open([MarshalAs(UnmanagedType.LPStr)] string filename, out IntPtr db, int flags, IntPtr zvfs);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_open_v2", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Open(byte[] filename, out IntPtr db, int flags, IntPtr zvfs);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_open16", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Open16([MarshalAs(UnmanagedType.LPWStr)] string filename, out IntPtr db);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_enable_load_extension", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result EnableLoadExtension(IntPtr db, int onoff);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_close", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Close(IntPtr db);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_initialize", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Initialize();
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_shutdown", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Shutdown();
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_config", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Config(ConfigOption option);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_win32_set_directory", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
-        public static extern int SetDirectory(uint directoryType, string directoryPath);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_busy_timeout", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result BusyTimeout(IntPtr db, int milliseconds);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_changes", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Changes(IntPtr db);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_prepare_v2", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Prepare2(IntPtr db, [MarshalAs(UnmanagedType.LPStr)] string sql, int numBytes, out IntPtr stmt, IntPtr pzTail);
-
-#if NETFX_CORE
-		[DllImport ("sqlite3", EntryPoint = "sqlite3_prepare_v2", CallingConvention = CallingConvention.Cdecl)]
-		public static extern Result Prepare2 (IntPtr db, byte[] queryBytes, int numBytes, out IntPtr stmt, IntPtr pzTail);
-#endif
 
         public static IntPtr Prepare2(IntPtr db, string query)
         {
-            IntPtr stmt;
-#if NETFX_CORE
-            byte[] queryBytes = System.Text.UTF8Encoding.UTF8.GetBytes (query);
-            var r = Prepare2 (db, queryBytes, queryBytes.Length, out stmt, IntPtr.Zero);
-#else
-            var r = Prepare2(db, query, System.Text.UTF8Encoding.UTF8.GetByteCount(query), out stmt, IntPtr.Zero);
-#endif
-            if (r != Result.OK)
-            {
-                throw SQLiteException.New(r, GetErrmsg(db));
-            }
-            return stmt;
+            return IntPtr.Zero;
         }
 
-        [DllImport("sqlite3", EntryPoint = "sqlite3_step", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Step(IntPtr stmt);
 
-        [DllImport("sqlite3", EntryPoint = "sqlite3_reset", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Reset(IntPtr stmt);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_finalize", CallingConvention = CallingConvention.Cdecl)]
-        public static extern Result Finalize(IntPtr stmt);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_last_insert_rowid", CallingConvention = CallingConvention.Cdecl)]
-        public static extern long LastInsertRowid(IntPtr db);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_errmsg16", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr Errmsg(IntPtr db);
 
         public static string GetErrmsg(IntPtr db)
         {
-            return Marshal.PtrToStringUni(Errmsg(db));
+            return null;
         }
 
-        [DllImport("sqlite3", EntryPoint = "sqlite3_bind_parameter_index", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int BindParameterIndex(IntPtr stmt, [MarshalAs(UnmanagedType.LPStr)] string name);
 
-        [DllImport("sqlite3", EntryPoint = "sqlite3_bind_null", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int BindNull(IntPtr stmt, int index);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_bind_int", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int BindInt(IntPtr stmt, int index, int val);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_bind_int64", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int BindInt64(IntPtr stmt, int index, long val);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_bind_double", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int BindDouble(IntPtr stmt, int index, double val);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_bind_text16", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
-        public static extern int BindText(IntPtr stmt, int index, [MarshalAs(UnmanagedType.LPWStr)] string val, int n, IntPtr free);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_bind_blob", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int BindBlob(IntPtr stmt, int index, byte[] val, int n, IntPtr free);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_count", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int ColumnCount(IntPtr stmt);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_name", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr ColumnName(IntPtr stmt, int index);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_name16", CallingConvention = CallingConvention.Cdecl)]
         static extern IntPtr ColumnName16Internal(IntPtr stmt, int index);
         public static string ColumnName16(IntPtr stmt, int index)
         {
-            return Marshal.PtrToStringUni(ColumnName16Internal(stmt, index));
+            return null;
         }
 
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_type", CallingConvention = CallingConvention.Cdecl)]
-        public static extern ColType ColumnType(IntPtr stmt, int index);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_int", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int ColumnInt(IntPtr stmt, int index);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_int64", CallingConvention = CallingConvention.Cdecl)]
-        public static extern long ColumnInt64(IntPtr stmt, int index);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_double", CallingConvention = CallingConvention.Cdecl)]
-        public static extern double ColumnDouble(IntPtr stmt, int index);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_text", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr ColumnText(IntPtr stmt, int index);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_text16", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr ColumnText16(IntPtr stmt, int index);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_blob", CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr ColumnBlob(IntPtr stmt, int index);
-
-        [DllImport("sqlite3", EntryPoint = "sqlite3_column_bytes", CallingConvention = CallingConvention.Cdecl)]
         public static extern int ColumnBytes(IntPtr stmt, int index);
 
         public static string ColumnString(IntPtr stmt, int index)
         {
-            return Marshal.PtrToStringUni(SQLite3.ColumnText16(stmt, index));
+            return null;
         }
 
         public static byte[] ColumnByteArray(IntPtr stmt, int index)
         {
-            int length = ColumnBytes(stmt, index);
-            var result = new byte[length];
-            if (length > 0)
-                Marshal.Copy(ColumnBlob(stmt, index), result, 0, length);
-            return result;
+            return null;
         }
 
-        [DllImport("sqlite3", EntryPoint = "sqlite3_extended_errcode", CallingConvention = CallingConvention.Cdecl)]
-        public static extern ExtendedResult ExtendedErrCode(IntPtr db);
 
-        [DllImport("sqlite3", EntryPoint = "sqlite3_libversion_number", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int LibVersionNumber();
-#else
-		public static Result Open(string filename, out Sqlite3DatabaseHandle db)
-		{
-			return (Result) Sqlite3.sqlite3_open(filename, out db);
-		}
+        public static Result Open(string filename, out Sqlite3DatabaseHandle db)
+        {
+            db = default(Sqlite3DatabaseHandle);
+            return Result.Error;
+        }
 
-		public static Result Open(string filename, out Sqlite3DatabaseHandle db, int flags, IntPtr zVfs)
-		{
-#if USE_WP8_NATIVE_SQLITE
-			return (Result)Sqlite3.sqlite3_open_v2(filename, out db, flags, "");
-#else
-			return (Result)Sqlite3.sqlite3_open_v2(filename, out db, flags, null);
-#endif
-		}
+        public static Result Open(string filename, out Sqlite3DatabaseHandle db, int flags, IntPtr zVfs)
+        {
+            db = default(Sqlite3DatabaseHandle);
+            return Result.Error;
+        }
 
-		public static Result Close(Sqlite3DatabaseHandle db)
-		{
-			return (Result)Sqlite3.sqlite3_close(db);
-		}
+        public static Result Close(Sqlite3DatabaseHandle db)
+        {
+            return Result.Error;
+        }
 
-		public static Result BusyTimeout(Sqlite3DatabaseHandle db, int milliseconds)
-		{
-			return (Result)Sqlite3.sqlite3_busy_timeout(db, milliseconds);
-		}
+        public static Result BusyTimeout(Sqlite3DatabaseHandle db, int milliseconds)
+        {
+            return Result.Error;
+        }
 
-		public static int Changes(Sqlite3DatabaseHandle db)
-		{
-			return Sqlite3.sqlite3_changes(db);
-		}
+        public static int Changes(Sqlite3DatabaseHandle db)
+        {
+            return 0;
+        }
 
-		public static Sqlite3Statement Prepare2(Sqlite3DatabaseHandle db, string query)
-		{
-			Sqlite3Statement stmt = default(Sqlite3Statement);
-#if USE_WP8_NATIVE_SQLITE
-			var r = Sqlite3.sqlite3_prepare_v2(db, query, out stmt);
-#else
-			stmt = new Sqlite3Statement();
-			var r = Sqlite3.sqlite3_prepare_v2(db, query, -1, ref stmt, 0);
-#endif
-			if (r != 0)
-			{
-				throw SQLiteException.New((Result)r, GetErrmsg(db));
-			}
-			return stmt;
-		}
 
-		public static Result Step(Sqlite3Statement stmt)
-		{
-			return (Result)Sqlite3.sqlite3_step(stmt);
-		}
+        public static Result Step(Sqlite3Statement stmt)
+        {
+            return Result.Error;
+        }
 
-		public static Result Reset(Sqlite3Statement stmt)
-		{
-			return (Result)Sqlite3.sqlite3_reset(stmt);
-		}
+        public static Result Reset(Sqlite3Statement stmt)
+        {
+            return Result.Error;
+        }
 
-		public static Result Finalize(Sqlite3Statement stmt)
-		{
-			return (Result)Sqlite3.sqlite3_finalize(stmt);
-		}
+        public static Result Finalize(Sqlite3Statement stmt)
+        {
+            return Result.Error;
+        }
 
-		public static long LastInsertRowid(Sqlite3DatabaseHandle db)
-		{
-			return Sqlite3.sqlite3_last_insert_rowid(db);
-		}
+        public static long LastInsertRowid(Sqlite3DatabaseHandle db)
+        {
+            return 0;
+        }
 
-		public static string GetErrmsg(Sqlite3DatabaseHandle db)
-		{
-			return Sqlite3.sqlite3_errmsg(db);
-		}
+        public static int BindParameterIndex(Sqlite3Statement stmt, string name)
+        {
+            return 0;
+        }
 
-		public static int BindParameterIndex(Sqlite3Statement stmt, string name)
-		{
-			return Sqlite3.sqlite3_bind_parameter_index(stmt, name);
-		}
+        public static int BindNull(Sqlite3Statement stmt, int index)
+        {
+            return 0;
+        }
 
-		public static int BindNull(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_bind_null(stmt, index);
-		}
+        public static int BindInt(Sqlite3Statement stmt, int index, int val)
+        {
+            return 0;
+        }
 
-		public static int BindInt(Sqlite3Statement stmt, int index, int val)
-		{
-			return Sqlite3.sqlite3_bind_int(stmt, index, val);
-		}
+        public static int BindInt64(Sqlite3Statement stmt, int index, long val)
+        {
+            return 0;
+        }
 
-		public static int BindInt64(Sqlite3Statement stmt, int index, long val)
-		{
-			return Sqlite3.sqlite3_bind_int64(stmt, index, val);
-		}
+        public static int BindDouble(Sqlite3Statement stmt, int index, double val)
+        {
+            return 0;
+        }
 
-		public static int BindDouble(Sqlite3Statement stmt, int index, double val)
-		{
-			return Sqlite3.sqlite3_bind_double(stmt, index, val);
-		}
+        public static int BindText(Sqlite3Statement stmt, int index, string val, int n, IntPtr free)
+        {
+            return 0;
+        }
 
-		public static int BindText(Sqlite3Statement stmt, int index, string val, int n, IntPtr free)
-		{
-#if USE_WP8_NATIVE_SQLITE
-			return Sqlite3.sqlite3_bind_text(stmt, index, val, n);
-#else
-			return Sqlite3.sqlite3_bind_text(stmt, index, val, n, null);
-#endif
-		}
+        public static int BindBlob(Sqlite3Statement stmt, int index, byte[] val, int n, IntPtr free)
+        {
+            return 0;
+        }
 
-		public static int BindBlob(Sqlite3Statement stmt, int index, byte[] val, int n, IntPtr free)
-		{
-#if USE_WP8_NATIVE_SQLITE
-			return Sqlite3.sqlite3_bind_blob(stmt, index, val, n);
-#else
-			return Sqlite3.sqlite3_bind_blob(stmt, index, val, n, null);
-#endif
-		}
+        public static int ColumnCount(Sqlite3Statement stmt)
+        {
+            return 0;
+        }
 
-		public static int ColumnCount(Sqlite3Statement stmt)
-		{
-			return Sqlite3.sqlite3_column_count(stmt);
-		}
+        public static string ColumnName(Sqlite3Statement stmt, int index)
+        {
+            return null;
+        }
 
-		public static string ColumnName(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_name(stmt, index);
-		}
+        public static ColType ColumnType(Sqlite3Statement stmt, int index)
+        {
+            return default(ColType);
+        }
 
-		public static string ColumnName16(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_name(stmt, index);
-		}
+        public static int ColumnInt(Sqlite3Statement stmt, int index)
+        {
+            return 0;
+        }
 
-		public static ColType ColumnType(Sqlite3Statement stmt, int index)
-		{
-			return (ColType)Sqlite3.sqlite3_column_type(stmt, index);
-		}
+        public static long ColumnInt64(Sqlite3Statement stmt, int index)
+        {
+            return 0;
+        }
 
-		public static int ColumnInt(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_int(stmt, index);
-		}
+        public static double ColumnDouble(Sqlite3Statement stmt, int index)
+        {
+            return 0;
+        }
 
-		public static long ColumnInt64(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_int64(stmt, index);
-		}
+        public static string ColumnText(Sqlite3Statement stmt, int index)
+        {
+            return null;
+        }
 
-		public static double ColumnDouble(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_double(stmt, index);
-		}
+        public static string ColumnText16(Sqlite3Statement stmt, int index)
+        {
+            return null;
+        }
 
-		public static string ColumnText(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_text(stmt, index);
-		}
+        public static byte[] ColumnBlob(Sqlite3Statement stmt, int index)
+        {
+            return null;
+        }
 
-		public static string ColumnText16(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_text(stmt, index);
-		}
+        public static Result EnableLoadExtension(Sqlite3DatabaseHandle db, int onoff)
+        {
+            return (Result)0;
+        }
 
-		public static byte[] ColumnBlob(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_blob(stmt, index);
-		}
-
-		public static int ColumnBytes(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_bytes(stmt, index);
-		}
-
-		public static string ColumnString(Sqlite3Statement stmt, int index)
-		{
-			return Sqlite3.sqlite3_column_text(stmt, index);
-		}
-
-		public static byte[] ColumnByteArray(Sqlite3Statement stmt, int index)
-		{
-			return ColumnBlob(stmt, index);
-		}
-
-		public static Result EnableLoadExtension(Sqlite3DatabaseHandle db, int onoff)
-		{
-			return (Result)Sqlite3.sqlite3_enable_load_extension(db, onoff);
-		}
-
-		public static ExtendedResult ExtendedErrCode(Sqlite3DatabaseHandle db)
-		{
-			return (ExtendedResult)Sqlite3.sqlite3_extended_errcode(db);
-		}
-#endif
+        public static ExtendedResult ExtendedErrCode(Sqlite3DatabaseHandle db)
+        {
+            return (ExtendedResult)0;
+        }
 
         public enum ColType : int
         {
@@ -1713,5 +1474,14 @@ namespace SQLite
             Blob = 4,
             Null = 5
         }
+    }
+
+    internal class UnmanagedType
+    {
+        public static object LPStr = null;
+    }
+
+    internal class MarshalAsAttribute : Attribute
+    {
     }
 }
