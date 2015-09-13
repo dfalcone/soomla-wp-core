@@ -53,6 +53,7 @@ namespace SoomlaWpCore.data
             /// Create the table Task, if it doesn't exist.
             try
             {
+                //dbConn.CreateTable(typeof(KeyValue));
                 dbConn.CreateTable<KeyValue>();
             }
             catch (Exception e)
