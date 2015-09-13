@@ -23,11 +23,16 @@ SOOMLA modules internally use these features, though we encourage you to use the
 Project Config
 ---
 
-Install the Visual Studio extension "SQLite for Windows Phone".
+Windows Phone 8:
+* Install the Visual Studio extension "SQLite for Windows Phone".
+* In Visual Studio Tools->Extensions Search online for "SQLite for Windows Phone".
+* The other libraries are NuGets packages, they should be restored automatically.
 
-In Visual Studio Tools->Extensions Search online for "SQLite for Windows Phone".
-
-The others libraries are NuGets packages, it should be restored automatically.
+Windows Universal App 8.1:
+* If using Unity3d, the following steps must be performed on the build output solution in Visual Studio.
+* Install the Visual Studio extensions "SQLite for Windows Phone 8.1" and "SQLite for Windows Runtime 8.1".
+* Make sure the app is split into two projects, one for Windows 8.1 and one for Windows Phone 8.1
+* For each project, add the reference extension for SQLite for Windows and Windows Phone respectively.
 
 Contribution
 ---
